@@ -75,11 +75,26 @@ end
 # PARTIE 2 - EXO 2
 
 declare
-fun {Mirror A B}
-   
-   if (A =< 0) then (B+A)
-   else
-      {Mirror (A div 10) ((B*10) + (A mod 10))}
+
+fun {Miroir N}
+   fun {MiroirAux N A}
+      if N == 0 then A
+      else
+	 {MiroirAux (N div 10) A*10 + (N mod 10)}
+      end
+   end
+in
+   {MiroirAux N 0}
+end
+
+{Browse {Miroir 12345}}
+
+
+declare
+proc {CountDown N}
+   if N \= ~1 then
+      {Browse N}
+      {CountDown N-1}
    end
 end
 
@@ -99,6 +114,19 @@ end
 
 fun {Premier N}
    {Aux N 2}
+end
+
+declare
+fun {Fibonacci N}
+   fun {FibonacciAux N A B}
+      if N == 0 then A
+      elseif N == 1 then B
+      else
+	 {FibonacciAux N-1  B A+B}
+      end
+   end
+in
+   {FibonacciAux N 0 1}
 end
 
 # EXO 4 (Manque PPCM flemme)
@@ -157,13 +185,16 @@ end
 
 %EXO 2
 
-fun {Length A B}
-   case A
-   of nil then B
-   [] H|T then {Length A.2 B+1}
-   else
-      erreur
+declare
+fun {Length L}
+   fun {LengthAux L A}
+      case L
+      of H|T then {LengthAux L.2 A+1}
+      [] nil then A
+      end
    end
+in
+   {LengthAux L 0}
 end
 
 %EXO 4
@@ -218,6 +249,43 @@ end
 {Browse {Append [r a] [p h]}}
 
 
+declare
+fun {Append A B}
+   case A
+   of nil then B
+   [] H|T then
+      case B
+      of nil then A
+      [] H|T then
+	 A.1|{Append A.2 B}
+      end
+   end
+end
+
+
+declare
+fun {Take L A}
+   if A == 0 then nil
+   else
+      case L
+      of nil then nil
+      [] H|T then L.1 | {Take L.2 A-1}
+      end
+   end
+end
+
+declare
+fun {Drop L A}
+   case L
+   of nil then nil
+   [] H|T then
+      if A \= 0 then {Drop L.2 A-1}
+      else
+	 L
+      end
+   end
+end
+
 % TP 2 . EXTRA
 
 %1 Flatten
@@ -245,6 +313,122 @@ fun {Flatten2 X}
    [] nil then nil
    else
       [X]
+   end
+end
+
+%%10
+
+declare
+fun {PromenadeAux BT L} % Noeud gauche droite
+   case BT of btree(V left:TL right:TR) then
+      V | {PromenadeAux TL {PromenadeAux TR L}}
+   [] empty then L
+   end
+end
+
+declare
+fun {Promenade BT}
+   {PromenadeAux BT nil}
+end
+
+%%11
+
+declare
+fun {DictionaryFilter D F}
+   case D
+   of dict(key:K info:I left:L right:R) then
+      if {F I} then
+	 K#I | {Append {DictionaryFilter L F} {DictionaryFilter R F}}
+      else
+	 {Append {DictionaryFilter L F} {DictionaryFilter R F}}
+      end
+   [] leaf then nil
+   end
+end
+
+
+local Old Class Val in
+   Class = dict(key:10
+		info:person('Christian' 19)
+		left:dict(key:7
+			  info: person('Denys' 25)
+			  left:leaf
+			  right:dict(key:9
+				     info:person('David' 7)
+				     left:leaf
+				     right:leaf))
+		right:dict(key:18
+			   info:person('Rose' 12)
+			   left:dict(key:14
+				     info:person('Ann' 27)
+				     left:leaf
+				     right:leaf)
+			   right:leaf))
+   fun {Old Info}
+      Info.2 > 20
+   end
+   Val = {DictionaryFilter Class Old}
+   {Browse Val}
+   % Val --> [7#person('Denys'25) 14#person('Ann'27)]
+end
+
+%%12
+
+
+
+%%%%TP 3
+
+local MakeAdd Add1 Add2 B C in
+   proc {MakeAdd X Add}
+      proc {Add Y Z}
+	 Z = X + Y
+      end
+   end
+   B = 1
+   C = 2
+   {MakeAdd B Add1}
+   {MakeAdd C Add2}
+
+   local V D in
+      D = 42
+      {Add1 D V}
+      {Browse V}
+   end
+
+   local V E in
+      E = 42
+      {Add2 E V}
+      {Browse V}
+   end
+end
+
+%%%%TP 4
+
+declare
+fun {MakeMulFilter N}
+   fun {$ I}
+      I mod N == 0
+   end 
+end
+
+%%EXO 2
+declare
+fun {MakeMulFilter N}
+   fun {$ I}
+      I mod N == 0
+   end 
+end
+
+declare
+fun {Filter A F}
+   case A
+   of H|T then
+      if {F H}
+      then H | {Filter T F}
+      else
+	 {Filter T F}
+      end
+   [] nil then nil
    end
 end
 
