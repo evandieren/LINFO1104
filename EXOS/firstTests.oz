@@ -432,5 +432,85 @@ fun {Filter A F}
    end
 end
 
+
+
+declare
+fun {Random N} {OS.rand} mod N + 1 end
+
+declare
+fun {Shuffle L}
+   local Arr R Len Count Result I in
+      Len = {List.length L}
+      Arr = {NewArray 1 Len 0}
+      I = {NewCell 0}   
+      for X in L do
+	 Arr.@I := X
+	 I := @I+1
+      end
+      Count = {NewCell Len}
+      Result = {NewCell nil}
+      R = {NewCell 0}
+      for Y in Len..1;~1 do
+	 R := {Random Y}
+	 Result := Arr.@R | @Arr
+	 Arr.R := Arr.@Count
+	 Count := @Count - 1
+      end
+      {List.reverse @Result}
+   end
+end
+{Browse {Shuffle [1 2 3]}}
+
+
+ 
+declare
+fun {Shuffle Xs}
+   local T Len R Count Arr in
+    Len = {List.length Xs}
+    T = {NewArray 1 Len 0}
+    for Y in 1..Len do
+        T.Y := {List.nth Xs Y}
+    end
+    Count = {NewCell Len}
+    Arr = {NewCell nil}
+    R = {NewCell 0}
+    for Y in Len..1;~1 do
+        R := {Random Y}
+        Arr := T.@R | @Arr
+        T.@R := T.@Count
+        Count := @Count - 1
+    end
+    {List.reverse @Arr}
+   end
+end
+
+{Browse {Shuffle [1 2 3]}}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%TP 9
+
+ 
+declare
+fun {MakeBinaryGate F}
+   fun {$ Xs Ys} % On va return une fonction (donc un higher order N = 1)
+      local GateLoop in
+        fun {GateLoop Xs Ys} % Ici on chope les deux Streams et les concatène pour pouvoir faire du patern mathcing
+           case Xs#Ys of (X|Xr)#(Y|Yr) then
+              {F X Y}|{GateLoop Xr Yr} % On applique F sur les deux têtes et on call GateLoop sur les deux queues
+           end
+        end
+        thread {GateLoop Xs Ys} end % On lance le thread de GateLoop sur Xs et Ys après l'avoir défini ci-dessus.
+      end
+   end
+end
+
+AndG = {MakeBinaryGate fun {$ X Y} X *Y end} % On crée le AndGate (en utilisant fun ...)
+Stream1 = 0|1|1|0|_ % Nos deux streams
+Stream2 = 1|1|0|0|_
+Stream3 = {AndG Stream1 Stream2} % La solution
+
+{Browse Stream1}
+{Browse Stream2}
+{Browse Stream3}
 
