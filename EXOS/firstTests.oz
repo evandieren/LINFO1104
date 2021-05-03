@@ -514,3 +514,68 @@ Stream3 = {AndG Stream1 Stream2} % La solution
 {Browse Stream2}
 {Browse Stream3}
 
+
+
+declare
+fun {Not X}
+   1-X
+end
+
+fun {NotGate Str}
+   fun {NotGateAux L} %Fonction annexe qui applique Not sur le stream donné en input
+      case L
+      of H|T then {Not H}|{NotGateAux T}
+      else nil end
+   end in
+   thread {NotGateAux Str} end %On crée le thread concurrent
+end
+
+fun {AndGate Xs Ys}
+   fun {AndGateAux X Y} % Pareil mais pour And
+      case X#Y % Permet de concatener et travailler avec les deux, c'est clean :)
+      of (H1|Xs)#(H2|Ys) then
+        H1*H2|{AndGateAux Xs Ys}
+      else nil end
+   end in
+   thread {AndGateAux Xs Ys} end % Pareil pour le concurrent
+end
+
+fun {OrGate Xs Ys} %Pareil pour le Or
+   fun {OrGateAux X Y}
+      case X#Y
+      of (H1|Xs)#(H2|Ys) then
+        (H1+H2 - H1*H2)|{OrGateAux Xs Ys}
+      else nil end
+   end in
+   thread {OrGateAux Xs Ys} end
+end
+
+declare
+fun {Simulate G Ss}
+   fun {SimulateAux G I}
+      case G.I
+      of gate(...) then {Simulate G.I Ss} %On relance le simulate car on a pas encore d'input
+      [] input(X) then Ss.X %On peut donner l'input aux portes logiques
+      end
+   end
+in
+   thread % On relance encore un thread
+      case G of gate(value:V ...) then % Les ... servent à ne pas forcément spécifier le reste de gate, juste la value
+        case V
+        of 'not' then {NotGate {SimulateAux G 1}}
+        [] 'and' then {AndGate {SimulateAux G 1} {SimulateAux G 2}}
+        [] 'or' then {OrGate {SimulateAux G 1} {SimulateAux G 2}}
+        end
+      end
+   end
+end
+
+declare
+G = gate(value:'or'
+   gate(value:'and'
+        input(x)
+        input(y))
+   gate(value:'not' input(z)))
+Ss
+{Browse {Simulate G Ss}}
+Ss = input(x: 1|0|1|0|_ y:0|1|0|1|_ z:1|1|0|0|_)
