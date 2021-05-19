@@ -579,3 +579,180 @@ G = gate(value:'or'
 Ss
 {Browse {Simulate G Ss}}
 Ss = input(x: 1|0|1|0|_ y:0|1|0|1|_ z:1|1|0|0|_)
+
+
+%%TP 11
+
+declare
+fun {NewPortObject Behaviour Init}
+   proc {MsgLoop S1 State}
+      case S1 of Msg|S2 then {MsgLoop S2 {Behaviour Msg State}}
+      [] nil then skip
+      end
+   end
+   Sin in
+   thread {MsgLoop Sin Init} end
+   {NewPort Sin}
+end
+
+fun {Portier}
+   
+   fun {PortierAux Msg State}
+      case Msg of getIn(N) then State+N
+      [] getOut(N) then
+   if State=<N then 0
+   else
+      State-N
+   end
+      [] getCount(N) then State
+      end
+   end
+in
+   {NewPortObject PortierAux 0}
+end
+
+
+declare
+
+fun {NewPortObject Behaviour Init}
+   proc {MsgLoop S1 State}
+      case S1 of Msg|S2 then {MsgLoop S2 {Behaviour Msg State}}
+      [] nil then skip
+      end
+   end
+   Sin in
+   thread {MsgLoop Sin Init} end
+   {NewPort Sin}
+end
+
+fun {NewStack}
+   fun {NewStackAux Msg State}
+      case Msg of push(S X) then S=X|State X|State
+      [] pop(X) then
+   {Browse test}
+   case State of nil then X=nil nil
+   [] S|St then X=S St
+   end
+      [] isempty(X) then
+   case State of nil then X = true nil
+   [] S|St then X = false State
+   end
+      end
+   end
+in
+   {NewPortObject NewStackAux nil}
+end
+
+declare S X in
+S = {NewStack}
+{Send S push(S 4)}
+{Send S pop(X)}
+{Browse X}
+
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%REDO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ADT NORMAL (Bas gauche)
+
+declare
+proc {NewWrapper ?Wrap ?Unwrap}
+    Key={NewName}
+in
+    fun {Wrap X}
+        fun {$ K} if K==Key then X end end
+    end
+    fun {Unwrap W}
+        {W Key}
+    end
+end
+
+local Wrap Unwrap in
+   {NewWrapper Wrap Unwrap}
+   fun {NewStack} {Wrap nil} end
+   fun {Push W X} {Wrap X|{Unwrap W}} end
+   fun {Pop W X} S={Unwrap W} in X=S.1 {Wrap S.2} end
+   fun {IsEmpty W} {Unwrap W}==nil end
+end
+
+
+declare
+S = {NewStack}
+S2 = {Push {Push S 2} 9}
+local X Y in
+   S3 = {Pop {Pop S2 Y} X}
+   {Browse X} % Prints 2
+end
+
+% ADT Avec State (donc avec Cellules)
+
+local Wrap Unwrap in
+   {NewWrapper Wrap Unwrap}
+   fun {NewStack} {Wrap {NewCell nil}} end
+   proc {Push W X} C={Unwrap W} in C:=X|@C end
+   fun {Pop W} C={Unwrap W} in
+      case @C of X|T then C:=T X end
+   end
+   fun {IsEmpty W} @{Unwrap W}==nil end
+in
+   Stack=stack(new:NewStack push:Push pop:Pop isEmpty:IsEmpty)
+end
+
+% Object (avec Cells)
+
+declare
+fun {NewStack}
+   %INIT
+   C = {NewCell nil} %Création de la STACK
+   proc {Push X} C := X|@C end
+   proc {Pop X} S=@C in X=S.1 C:=S.2 end
+   fun {IsEmpty} @C==nil end
+in
+   stack(push:Push pop:Pop isEmpty:IsEmpty) %Création du record final
+end
+
+X = {NewStack}
+{Browse {X.isEmpty}}
+{X.push 4}
+{X.push 6}
+{Browse {X.isEmpty}}
+{Browse {X.pop}}
+{Browse {X.pop}}
+
+% Functionnal Object
+
+declare
+local
+
+   fun {StackObjectFunc S}
+      fun {Push E} {StackObjectFunc E|S} end
+      fun {Pop S1} case S of X|T then S1={StackObjectFunc T} X end end
+      fun {IsEmpty} S==nil end
+   in
+      stack(push:Push pop:Pop isEmpty:IsEmpty)
+   end
+
+in
+   fun {NewStack}
+      {StackObjectFunc nil}
+   end
+end
+
+local E in
+   A = {NewStack}
+   {Browse {A.isEmpty}}
+   B = {A.push 4}
+   C = {B.push 6}
+   D = {C.pop E}
+   {Browse D}
+end
+
+
+
