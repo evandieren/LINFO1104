@@ -375,6 +375,20 @@ end
 %%12
 
 
+% ARBRE
+
+declare
+fun {Insert K W T}
+   case T
+   of leaf then tree(key:K value:W left:leaf right:leaf)
+   []tree(key:Y value:V left:T1 right:T2) andthen K==Y then
+      tree(key:K value:W left:T1 right:T2)
+   []tree(key:Y value:V left:T1 right:T2) andthen K<Y then
+      tree(key:Y value:V left:{Insert K W T1} right:T2)
+   []tree(key:Y value:V left:T1 right:T2) andthen K>Y then
+      tree(key:Y value:V left:T1 right:{Insert K W T2})
+   end
+end
 
 %%%%TP 3
 
@@ -444,17 +458,17 @@ fun {Shuffle L}
       Arr = {NewArray 1 Len 0}
       I = {NewCell 0}   
       for X in L do
-	 Arr.@I := X
-	 I := @I+1
+	     Arr.@I := X
+	     I := @I+1
       end
       Count = {NewCell Len}
       Result = {NewCell nil}
       R = {NewCell 0}
       for Y in Len..1;~1 do
-	 R := {Random Y}
-	 Result := Arr.@R | @Arr
-	 Arr.R := Arr.@Count
-	 Count := @Count - 1
+      	 R := {Random Y}
+      	 Result := Arr.@R | @Arr
+      	 Arr.R := Arr.@Count
+      	 Count := @Count - 1
       end
       {List.reverse @Result}
    end
@@ -526,7 +540,8 @@ fun {NotGate Str}
       case L
       of H|T then {Not H}|{NotGateAux T}
       else nil end
-   end in
+   end
+   in
    thread {NotGateAux Str} end %On crée le thread concurrent
 end
 
@@ -536,7 +551,8 @@ fun {AndGate Xs Ys}
       of (H1|Xs)#(H2|Ys) then
         H1*H2|{AndGateAux Xs Ys}
       else nil end
-   end in
+   end 
+   in
    thread {AndGateAux Xs Ys} end % Pareil pour le concurrent
 end
 
@@ -583,6 +599,7 @@ Ss = input(x: 1|0|1|0|_ y:0|1|0|1|_ z:1|1|0|0|_)
 
 %%TP 11
 
+%FACTORY DE PORT AVEC STATE
 declare
 fun {NewPortObject Behaviour Init}
    proc {MsgLoop S1 State}
@@ -614,45 +631,27 @@ end
 
 declare
 
-fun {NewPortObject Behaviour Init}
-   proc {MsgLoop S1 State}
-      case S1 of Msg|S2 then {MsgLoop S2 {Behaviour Msg State}}
-      [] nil then skip
-      end
-   end
-   Sin in
-   thread {MsgLoop Sin Init} end
-   {NewPort Sin}
-end
-
 fun {NewStack}
-   fun {NewStackAux Msg State}
-      case Msg of push(S X) then S=X|State X|State
-      [] pop(X) then
-   {Browse test}
-   case State of nil then X=nil nil
-   [] S|St then X=S St
+   fun {StackMsg Msg Stack}
+      case Msg
+      of push(X) then X|Stack
+      [] pop(S) then
+   if Stack==nil then S=nil nil
+   else
+      S = Stack.1 Stack.2
    end
-      [] isempty(X) then
-   case State of nil then X = true nil
-   [] S|St then X = false State
-   end
+      [] isEmpty(B) then B = Stack==nil Stack
       end
    end
 in
-   {NewPortObject NewStackAux nil}
+   {NewPortObjectState StackMsg nil}
 end
 
 declare S X in
 S = {NewStack}
-{Send S push(S 4)}
+{Send S push(4)}
 {Send S pop(X)}
 {Browse X}
-
-
-
-
-
 
 
 
@@ -756,3 +755,286 @@ end
 
 
 
+%CONCURRENCY - DETERMINISTIC DATAFLOW
+
+%TEST de threads avec feed region
+
+declare
+proc {Disp S}
+   case S of X|S2 then {Browse X} {Disp S2} end
+end
+
+declare S in
+thread {Disp S} end %Waits until S in bounded
+
+declare S2 in
+S = a|b|c|S2
+
+declare S3 in
+S2 = d|e|f|S3
+
+S3 = s|t|u|_
+
+
+% Producer consumer
+declare
+proc {Disp S}
+   case S of X|S2 then {Browse X} {Disp S2} end
+end
+fun {Prod N} {Delay 1000} N|{Prod N+1} end
+declare S
+thread S = {Prod 1} end % Crée le producer
+thread {Disp S} end % On crée le consumer qui va récup le thread et print ce qu'il y a dedans en attendant la fin du thread
+
+%pipeline
+
+fun {Trans S}
+  case S of X|S2 then X*X|{Trans S2} end
+end
+
+declare S1 S2
+thread S1 = {Prod 1} end
+thread S2 = {Trans S1} end
+thread {Disp S2} end
+
+
+
+declare
+fun {ProduceInts N}
+   fun {ProdAux A}
+      if A>N then nil
+      else
+   A|{ProdAux A+1}
+      end
+   end
+in
+   {ProdAux 1}
+end      
+
+fun {Sum Stream}
+   case Stream of X|S then X+{Sum S}
+   [] nil then 0
+   end
+end
+
+declare Xs S
+Xs = {ProduceInts 666}
+S = {Sum Xs}
+{Browse S}
+
+
+
+
+
+declare
+fun {Producer N}
+   fun {ProdAux A}
+      if A>N then nil
+      else
+   A|{ProdAux A+1}
+      end
+   end
+in
+   {ProdAux 1}
+end
+
+fun {Filter Str}
+   case Str of X|S then
+      if  ((X mod 2)==0) then X|{Filter S}
+      else
+   {Filter S}
+      end
+   [] nil then nil
+   end
+end
+
+fun {Consumer Str}
+   case Str of X|S then X+{Consumer S}
+   [] nil then 0
+   end
+end
+
+declare S1 S2 S3
+thread S1 = {Producer 500} end
+thread S2 = {Filter S1} end
+thread S3 = {Consumer S2} end
+
+{Browse S1}
+{Browse S2}
+{Browse S3}
+
+
+
+%Petit Consumer des familles
+
+declare
+fun {Counter Str}
+   fun {CounterAux Str L}
+      case Str of nil then nil
+      [] H|T then
+   local NewList in
+      NewList = {Add H L}
+      NewList|{CounterAux T NewList}
+   end
+      end
+   end
+   fun {Add X L}
+      case L of A#B|T then
+   if A==X then A#(B+1)|T
+   else
+      A#B|{Add X T}
+   end
+      else
+      X#1|nil
+      end
+   end
+in
+   thread {CounterAux Str nil} end
+end
+
+local InS in
+   {Browse {Counter InS}}
+   InS=a|b|a|c|_
+end
+
+
+
+
+
+
+
+%proc {ForCollect Xs P ?Ys} % Ys = var non liée de retour
+%   Acc = {NewCell Ys}
+%   proc {C X} R2 in @Acc=X|R2 Acc:=R2 end %On remplit la mémoire de Ys avec X|R2 et on remet la cellule sur R2
+%in
+%   for X in Xs do {P C X} end @Acc= nil % Une fois fini, on pose nil sur la fin de Ys.
+%end
+
+%{Browse {ForCollect [0 2 4 6 8] proc {$ Collect X} {Collect X div 2} end}}
+
+declare
+proc {ForCollect Xs P Ys}
+   Ys = nil
+   proc {C X} X|Ys end
+in
+   for X in Xs do {P C X} end% Une fois fini, on pose nil sur la fin de Ys.
+   {Browse done}
+end
+
+{Browse {ForCollect [0 2 4 6 8] proc {$ Collect X} {Collect (X div 2)} end}}
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%
+%PORTS
+%%%%%%%%%%%%%%%%
+
+
+% Port Normal (pas de State)
+declare
+
+fun {NewPortObject P} % Créateur de ports avec une boucle et un thread.
+   S
+   proc {Loop Stream}
+      case Stream of Msg|T then {P Msg} {Loop T}
+      [] nil then skip end
+   end
+in
+   thread {Loop S} end
+   {NewPort S}
+end
+
+proc {Calculator Msg} % Gère juste un cas, un message. C'est le port qui s'occupe du stream !
+   case Msg of add(X Y ?R) then R=X+Y
+   [] pow(X Y ?R) then R={Pow X Y}
+   [] 'div'(X Y ?R) then
+      if Y == 0 then skip
+      else R= X div Y end
+   else
+      {Browse 'je ne comprends pas ton message'}
+   end
+end
+
+fun {LaunchServer}
+   {NewPortObject Calculator}
+end
+
+
+declare A B N S Res1 Res2 Res3 Res4 Res5 Res6
+
+S = {LaunchServer}
+{Send S add(321 345 Res1)}
+{Browse Res1}
+{Send S pow(2 N Res2)}
+N = 8
+{Browse Res2}
+{Send S add(A B Res3)}
+{Send S add(10 20 Res4)}
+{Send S foo}
+{Browse Res4}
+A = 3
+B = 0-A
+{Send S'div'(90 Res3 Res5)}
+{Send S'div'(90 Res4 Res6)}
+{Browse Res3}
+
+
+fun {NewPortObjectState P InitState}
+   S
+   proc {Loop Stream State}
+      case Stream of Msg|T then {Loop T {P Msg State}}
+      [] nil then skip end
+   end
+in
+   thread {Loop S InitState} end
+   {NewPort S}
+end
+
+fun {StudentRMI} % Chaque StudentRMI est un Port et Charlotte va demander au Port le nombre de bières bues
+   S in
+   thread for ask(howmany:Beers) in S do Beers={OS.rand} mod 24 end end
+   {NewPort S}
+end
+
+fun {StudentCallBack} % Charlotte est un port et va recevoir les envois des students (qui donneront un nombre de bieres)
+   S in
+   thread
+      for ask(howmany:P) in S do {Send P {OS.rand} mod 24} end
+   end
+   {NewPort S}
+end
+
+fun {CreateUniversity Size} % Ici on va créer les students
+   fun {CreateLoop I}
+      if I =< Size then
+     {StudentRMI} | {CreateLoop I+1}
+      else nil end
+   end
+in
+   {CreateLoop 1}
+end
+
+
+fun {Charlotte Universite}
+   fun {CharlotteAux Universite State}
+      case Universite of Student|T then Beers in
+     {Send Student ask(howmany:Beers)}
+     {CharlotteAux T info(stud:State.stud + 1
+                  beers: State.beers + Beers
+                  min: if State.min == 0-1 then Beers
+                   elseif State.min > Beers then Beers
+                   else State.min end
+                  max: if State.max < Beers then Beers
+                   else State.max end
+                 )}
+      [] nil then State
+      end
+   end
+in
+   {CharlotteAux Universite info(stud:0 beers:0 min: 0-1 max: 0-1)}
+end
+Students = {CreateUniversity 10}
