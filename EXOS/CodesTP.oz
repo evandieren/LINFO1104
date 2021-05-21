@@ -528,7 +528,7 @@ Stream3 = {AndG Stream1 Stream2} % La solution
 {Browse Stream2}
 {Browse Stream3}
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 declare
 fun {Not X}
@@ -628,6 +628,7 @@ in
    {NewPortObject PortierAux 0}
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 declare
 
@@ -652,6 +653,46 @@ S = {NewStack}
 {Send S push(4)}
 {Send S pop(X)}
 {Browse X}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+declare
+fun {NewPortObject MsgHandler InitState}
+   S
+   proc {MsgLoop S1 State}
+      case S1 of Msg|S2 then {MsgLoop S2 {MsgHandler Msg State}}
+      [] nil then skip
+      end
+   end
+in
+   thread {MsgLoop S InitState} end
+   {NewPort S}
+end
+
+
+fun {NewQueue}
+   fun {QueueAux S State}
+      case S
+      of enqueue(X) then {Append [X] State}
+      [] dequeue(X) then
+   case State
+   of nil then X=nil nil
+   [] H|T then X=H T
+   end
+      [] isempty(B) then B= State==nil State
+      [] getElements(Q) then Q=State State
+      end
+   end
+in
+   {NewPortObject QueueAux nil}
+end
+
+declare Q X in
+Q = {NewQueue}
+{Send Q enqueue(4)}
+{Browse X}
+{Send Q dequeue(X)}
+
 
 
 
@@ -775,6 +816,7 @@ S2 = d|e|f|S3
 
 S3 = s|t|u|_
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Producer consumer
 declare
@@ -797,7 +839,7 @@ thread S1 = {Prod 1} end
 thread S2 = {Trans S1} end
 thread {Disp S2} end
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 declare
 fun {ProduceInts N}
@@ -823,8 +865,7 @@ S = {Sum Xs}
 {Browse S}
 
 
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 declare
 fun {Producer N}
@@ -863,7 +904,7 @@ thread S3 = {Consumer S2} end
 {Browse S2}
 {Browse S3}
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Petit Consumer des familles
 
@@ -897,11 +938,7 @@ local InS in
    InS=a|b|a|c|_
 end
 
-
-
-
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %proc {ForCollect Xs P ?Ys} % Ys = var non liée de retour
 %   Acc = {NewCell Ys}
@@ -983,6 +1020,8 @@ B = 0-A
 {Browse Res3}
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 fun {NewPortObjectState P InitState}
    S
    proc {Loop Stream State}
@@ -1038,3 +1077,53 @@ in
    {CharlotteAux Universite info(stud:0 beers:0 min: 0-1 max: 0-1)}
 end
 Students = {CreateUniversity 10}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+declare
+fun {NewPortObject Behaviour InitialState}
+   S
+   proc {MsgLoop S1 State}
+      case S1 of Msg|T then {MsgLoop T {Behaviour Msg State}}
+      else
+    skip
+      end
+   end
+in
+   thread {MsgLoop S InitialState} end
+   {NewPort S}
+end
+
+fun {Counter Output}
+   P = {NewPort Output}
+   
+   fun {CounterAux S State}
+      case S of nil then State
+      [] H|T then
+    local NewList in
+       NewList = {Add H State}
+       {Send P NewList}
+       NewList|{CounterAux T NewList}
+    end
+      end
+   end
+   
+   fun {Add X L}
+      case L of A#B|T then
+   if A==X then A#(B+1)|T
+   else
+      A#B|{Add X T}
+   end
+      else
+      X#1|nil
+      end
+   end
+in
+   {NewPortObject CounterAux nil}
+end
+
+declare S P={Counter S}
+
+{Send P [a a c a d]}
+{Browse S}
