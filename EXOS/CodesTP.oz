@@ -794,8 +794,6 @@ local E in
    {Browse D}
 end
 
-
-
 %CONCURRENCY - DETERMINISTIC DATAFLOW
 
 %TEST de threads avec feed region
@@ -890,6 +888,7 @@ fun {Filter Str}
 end
 
 fun {Consumer Str}
+   {Browse test}
    case Str of X|S then X+{Consumer S}
    [] nil then 0
    end
