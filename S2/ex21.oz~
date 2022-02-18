@@ -1,0 +1,11 @@
+declare
+
+fun {Flatten L}
+   declare
+   Y=nil
+   {List.Flatten +L ?Y}
+   Y
+   
+end
+
+{Browse {Flatten [a [b [c d]] e [[[f]]]]}}

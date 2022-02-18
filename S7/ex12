@@ -1,0 +1,22 @@
+ordre normal
+de gauche a droite.
+(λx.m)((λx.(xx))λx.(xx))
+   1       2      3
+(λx.m)
+m
+
+ordre applicatif (d'abord les arguments puis les fonctions)
+
+(λx.m)((λx(xx)) λx(xx))
+(λx.m)((λx.(xx))λx.(xx))
+  3         2     1
+
+1 est arg de 2,
+(λx.m)(λx.(xx)(λx.(xx)))
+  3          2
+
+2 est arg de 3 :
+(λx.m)
+m
+
+
